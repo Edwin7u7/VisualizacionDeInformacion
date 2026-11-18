@@ -100,6 +100,44 @@ fig2 = go.Figure(go.Bar(
 
 st.plotly_chart(fig2, use_container_width=True)
 
+# Datos filtrados por año y distrito (se usan en las 3 gráficas nuevas)
+filtro = df[(df['Incident Year'] == year_selected) & (df['Police District'] == dist_selected)].copy()
+
+# =========================================================
+# GRÁFICA NUEVA 1: Línea - incidentes por mes 
+# =========================================================
+st.markdown("## Crimes per month.")
+filtro['Mes'] = pd.to_datetime(filtro['Incident Date'], errors='coerce').dt.month
+por_mes = filtro.groupby('Mes')['Incident Number'].count().reindex(range(1, 13), fill_value=0)
+por_mes.index = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+st.line_chart(por_mes, x_label="Month", y_label="Number of incidents")
+
+# =========================================================
+# GRÁFICA NUEVA 2: Mapa de calor
+# =========================================================
+st.markdown("## When do crimes happen? (day vs hour)")
+filtro['Hora'] = pd.to_datetime(filtro['Incident Time'], format='%H:%M', errors='coerce').dt.hour
+dias = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+tabla = pd.crosstab(filtro['Incident Day of Week'], filtro['Hora']).reindex(index=dias, columns=range(24), fill_value=0)
+fig3 = px.imshow(
+    tabla,
+    labels=dict(x="Hour of the day", y="Day of the week", color="Incidents"),
+    color_continuous_scale="Reds",
+    aspect="auto",
+)
+st.plotly_chart(fig3, use_container_width=True)
+
+# =========================================================
+# GRÁFICA NUEVA 3: Treemap 
+# =========================================================
+st.markdown("## Types of crime in detail.")
+arbol = (filtro.dropna(subset=['Incident Category', 'Incident Subcategory'])
+         .groupby(['Incident Category', 'Incident Subcategory'])
+         .size().reset_index(name='Total'))
+fig4 = px.treemap(arbol, path=['Incident Category', 'Incident Subcategory'], values='Total')
+st.plotly_chart(fig4, use_container_width=True)
+
 category = df['Incident Category']
 genre = st.radio(
     "Have you suffered from a crime in these areas?",
